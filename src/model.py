@@ -1,4 +1,4 @@
-import torch
+import torch  # noqa: F401, E402  # needed for torch.nn functionality
 import torch.nn as nn
 
 class MNISTModel(nn.Module):
