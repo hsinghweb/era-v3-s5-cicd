@@ -29,7 +29,7 @@ def test_model_accuracy():
     
     # Load the latest trained model
     model_path = get_latest_model()
-    model.load_state_dict(torch.load(model_path, map_location=device))
+    model.load_state_dict(torch.load(model_path, map_location=device, weights_only=True))
     model.eval()
     
     # Load test data
