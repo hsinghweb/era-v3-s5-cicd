@@ -1,120 +1,135 @@
 import torch
-import torch.optim as optim
 import torch.nn as nn
 from torchvision import datasets, transforms
-from model import MNISTModel
-import matplotlib.pyplot as plt
 from torchvision.datasets import MNIST
 from torch.utils.data import DataLoader
 
-# Define augmentation transforms
-train_transform = transforms.Compose([
-    transforms.RandomRotation(15),
-    transforms.RandomAffine(0, translate=(0.1, 0.1), scale=(0.9, 1.1)),
-    transforms.ToTensor(),
-    transforms.Normalize((0.1307,), (0.3081,))
-])
+MODEL_PATH = 'mnist_model.pth'
 
-def show_augmented_samples(dataset, num_samples=5):
-    print("\n=== Showing Augmented Samples ===")
-    plt.figure(figsize=(12, 3))
-    for i in range(num_samples):
-        # Get the same image multiple times to show different augmentations
-        img, label = dataset[0]
-        plt.subplot(1, num_samples, i + 1)
-        plt.imshow(img.squeeze(), cmap='gray')
-        plt.title(f'Label: {label}')
-        plt.axis('off')
-    plt.savefig('augmented_samples.png')
-    plt.close()
-
-def get_transforms():
-    return transforms.Compose([
-        transforms.ToTensor(),
-        transforms.Normalize((0.1307,), (0.3081,))  # MNIST mean and std
-    ])
-
-def train_model():
-    print("\n=== Training Model ===")
-    device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
+def create_model():
+    """Create the model architecture"""
     model = nn.Sequential(
-        nn.Conv2d(1, 4, 3, padding=1),     # Reduced to 4 filters
+        nn.Conv2d(1, 4, 3, padding=1),
         nn.ReLU(),
         nn.MaxPool2d(2),
         
-        nn.Conv2d(4, 8, 3, padding=1),     # Reduced to 8 filters
+        nn.Conv2d(4, 8, 3, padding=1),
         nn.ReLU(),
         nn.MaxPool2d(2),
         nn.Dropout(0.25),
         
         nn.Flatten(),
-        nn.Linear(8 * 7 * 7, 32),          # Reduced input channels to 8
+        nn.Linear(8 * 7 * 7, 32),
         nn.ReLU(),
         nn.Dropout(0.3),
         nn.Linear(32, 10)
     )
+    return model
 
-    # Print parameter count
-    total_params = sum(p.numel() for p in model.parameters())
-    print(f'\nTotal parameters: {total_params:,}')
-
-    optimizer = optim.Adam(model.parameters(), lr=0.002)  # Slightly higher learning rate
-    criterion = nn.CrossEntropyLoss()
-    
-    # Simplified augmentation
-    train_transform = transforms.Compose([
-        transforms.RandomRotation(10),
-        transforms.RandomAffine(0, translate=(0.1, 0.1)),
+def get_transforms():
+    return transforms.Compose([
         transforms.ToTensor(),
         transforms.Normalize((0.1307,), (0.3081,))
     ])
 
+def load_model():
+    """Load the trained model"""
+    model = create_model()
+    model.load_state_dict(torch.load(MODEL_PATH, weights_only=True))
+    model.eval()
+    return model
+
+def train_model():
+    """Train and save the model"""
+    print("\n=== Starting Model Training ===")
+    model = create_model()
     transform = get_transforms()
-    train_dataset = MNIST('./data', train=True, download=True, transform=transform)
-    train_loader = DataLoader(train_dataset, batch_size=64, shuffle=True)
-
-    # Single epoch training with detailed logging
-    model.train()
-    running_loss = 0.0
-    correct = 0
-    total = 0
     
-    for batch_idx, (data, target) in enumerate(train_loader):
-        data, target = data.to(device), target.to(device)
-        optimizer.zero_grad()
-        output = model(data)
-        loss = criterion(output, target)
-        loss.backward()
-        optimizer.step()
+    # Setup data
+    train_dataset = MNIST('./data', train=True, download=True, transform=transform)
+    test_dataset = MNIST('./data', train=False, transform=transform)
+    
+    train_loader = DataLoader(train_dataset, batch_size=64, shuffle=True)
+    test_loader = DataLoader(test_dataset, batch_size=64)
+    
+    criterion = nn.CrossEntropyLoss()
+    optimizer = torch.optim.Adam(model.parameters(), lr=0.001)
+    
+    # Training loop
+    max_epochs = 1
+    device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
+    print(f"Training on device: {device}")
+    model = model.to(device)
+    
+    for epoch in range(max_epochs):
+        model.train()
+        running_loss = 0.0
+        correct_train = 0
+        total_train = 0
         
-        # Calculate accuracy
-        _, predicted = torch.max(output.data, 1)
-        total += target.size(0)
-        correct += (predicted == target).sum().item()
-        running_loss += loss.item()
+        # Training phase
+        print(f"\nEpoch {epoch+1}/{max_epochs}")
+        print("-" * 50)
+        for batch_idx, (inputs, targets) in enumerate(train_loader):
+            inputs, targets = inputs.to(device), targets.to(device)
+            optimizer.zero_grad()
+            outputs = model(inputs)
+            loss = criterion(outputs, targets)
+            loss.backward()
+            optimizer.step()
+            
+            running_loss += loss.item()
+            _, predicted = outputs.max(1)
+            total_train += targets.size(0)
+            correct_train += predicted.eq(targets).sum().item()
+            
+            if (batch_idx + 1) % 100 == 0:
+                print(f"Batch [{batch_idx + 1}/{len(train_loader)}] "
+                      f"Loss: {running_loss/100:.3f} "
+                      f"Train Acc: {100.*correct_train/total_train:.2f}%")
+                running_loss = 0.0
         
-        if batch_idx % 100 == 0:
-            avg_loss = running_loss / (batch_idx + 1)
-            current_acc = 100 * correct / total
-            print(f'Batch [{batch_idx:>4d}/{len(train_loader)}] '
-                  f'({100. * batch_idx / len(train_loader):>3.0f}%) | '
-                  f'Loss: {loss.item():.4f} | '
-                  f'Avg Loss: {avg_loss:.4f} | '
-                  f'Acc: {current_acc:.2f}%')
-
-    final_acc = 100 * correct / total
-    print(f'\nTraining completed. Final accuracy: {final_acc:.2f}%')
-    return model 
+        # Testing phase
+        model.eval()
+        correct_test = 0
+        total_test = 0
+        test_loss = 0.0
+        
+        with torch.no_grad():
+            for inputs, targets in test_loader:
+                inputs, targets = inputs.to(device), targets.to(device)
+                outputs = model(inputs)
+                loss = criterion(outputs, targets)
+                test_loss += loss.item()
+                
+                _, predicted = outputs.max(1)
+                total_test += targets.size(0)
+                correct_test += predicted.eq(targets).sum().item()
+        
+        train_accuracy = 100. * correct_train / total_test
+        test_accuracy = 100. * correct_test / total_test
+        avg_test_loss = test_loss / len(test_loader)
+        
+        print(f"\nEpoch {epoch+1} Summary:")
+        print(f"Training Accuracy: {train_accuracy:.2f}%")
+        print(f"Test Accuracy: {test_accuracy:.2f}%")
+        print(f"Test Loss: {avg_test_loss:.4f}")
+        
+        # Stop if we reach 95% accuracy
+        if test_accuracy >= 95:
+            print(f"\n🎉 Reached {test_accuracy:.2f}% accuracy. Stopping training.")
+            break
+    
+    # Verify final accuracy meets requirement
+    if test_accuracy < 95:
+        raise ValueError(f"Model failed to achieve 95% accuracy, only reached {test_accuracy:.2f}%")
+    
+    print("\n=== Training Complete ===")
+    print(f"Final Test Accuracy: {test_accuracy:.2f}%")
+    
+    # Save the model
+    torch.save(model.state_dict(), MODEL_PATH)
+    return model
 
 if __name__ == "__main__":
-    # Train the model
     model = train_model()
-    
-    # Create dataset
-    transform = get_transforms()
-    train_dataset = MNIST('./data', train=True, download=True, transform=transform)
-    
-    # Show samples (only when running locally, not in CI)
-    import os
-    if not os.environ.get('CI'):  # Skip visualization in CI environment
-        show_augmented_samples(train_dataset)
