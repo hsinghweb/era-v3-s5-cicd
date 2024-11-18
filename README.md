@@ -15,21 +15,22 @@ A PyTorch-based machine learning project implementing.
 ## Installation
 
 1. Clone the repository:
-bash
+```bash
 git clone https://github.com/hsinghweb/era-v3-s5-cicd.git
 cd era-v3-s5-cicd
-
+```
 2. Create a virtual environment:
-bash
+```bash
 python -m venv venv
 source venv/bin/activate  # On Windows, use: venv\Scripts\activate
-
+```
 3. Install dependencies:
-bash
+```bash
 pip install -r requirements.txt
-
+```
 ## Project Structure
 
+```
 .
 ├── src/
 │   ├── model.py          # Model architecture definition
@@ -38,7 +39,7 @@ pip install -r requirements.txt
 ├── data/                 # Dataset directory
 ├── requirements.txt      # Project dependencies
 └── README.md             # This file
-
+```
 ## Development
 
 To contribute to this project:
@@ -65,7 +66,7 @@ python src/train.py
 
 1. To evaluate a trained model:
 ```bash
-python src/test_model.py
+pytest src/test_model.py -v -s
 ```
 
 ## Contact
