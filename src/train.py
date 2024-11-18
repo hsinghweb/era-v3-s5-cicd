@@ -16,6 +16,7 @@ train_transform = transforms.Compose([
 ])
 
 def show_augmented_samples(dataset, num_samples=5):
+    print("\n=== Showing Augmented Samples ===")
     plt.figure(figsize=(12, 3))
     for i in range(num_samples):
         # Get the same image multiple times to show different augmentations
@@ -34,6 +35,7 @@ def get_transforms():
     ])
 
 def train_model():
+    print("\n=== Training Model ===")
     device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
     model = nn.Sequential(
         nn.Conv2d(1, 4, 3, padding=1),     # Reduced to 4 filters
