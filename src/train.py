@@ -106,26 +106,28 @@ def train_model():
                 total_test += targets.size(0)
                 correct_test += predicted.eq(targets).sum().item()
         
-        train_accuracy = 100. * correct_train / total_test
-        test_accuracy = 100. * correct_test / total_test
+        accuracy = 100. * correct_test / total_test
         avg_test_loss = test_loss / len(test_loader)
         
         print(f"\nEpoch {epoch+1} Summary:")
-        print(f"Training Accuracy: {train_accuracy:.2f}%")
-        print(f"Test Accuracy: {test_accuracy:.2f}%")
-        print(f"Test Loss: {avg_test_loss:.4f}")
+        print(f"Accuracy: {accuracy:.2f}%")
+        print(f"Loss: {avg_test_loss:.4f}")
         
         # Stop if we reach 95% accuracy
-        if test_accuracy >= 95:
-            print(f"\n🎉 Reached {test_accuracy:.2f}% accuracy. Stopping training.")
+        if accuracy >= 95:
+            print(f"\n🎉 Reached {accuracy:.2f}% accuracy. Stopping training.")
             break
     
     # Verify final accuracy meets requirement
-    if test_accuracy < 95:
-        raise ValueError(f"Model failed to achieve 95% accuracy, only reached {test_accuracy:.2f}%")
+    if accuracy < 95:
+        raise ValueError(f"Model failed to achieve 95% accuracy, only reached {accuracy:.2f}%")
     
     print("\n=== Training Complete ===")
-    print(f"Final Test Accuracy: {test_accuracy:.2f}%")
+    print(f"Final Test Accuracy: {accuracy:.2f}%")
+    
+    # Display parameter count
+    num_params = sum(p.numel() for p in model.parameters())
+    print(f"Total parameters: {num_params:,}")
     
     # Save the model
     torch.save(model.state_dict(), MODEL_PATH)

@@ -9,6 +9,8 @@ from train import (
     MODEL_PATH, 
     get_transforms
 )
+from torchvision.datasets import MNIST
+from torch.utils.data import DataLoader
 
 @pytest.fixture(scope="session")
 def trained_model():
@@ -19,32 +21,39 @@ def trained_model():
         model = load_model()
     return model
 
-def verify_model_requirements(model, accuracy):
-    # Count parameters
-    total_params = sum(p.numel() for p in model.parameters())
-    
-    # Check requirements
-    param_check = total_params <= 25000
-    accuracy_check = accuracy >= 95.0
-    
-    # Print results
-    print("\n=== Model Requirements Check ===")
-    print(f"1. Parameter count ({total_params:,}): {'✓' if param_check else '✗'}")
-    print(f"2. Accuracy check ({accuracy:.2f}%): {'✓' if accuracy_check else '✗'}")
-    
-    # Assert both conditions
-    assert param_check, f"Model has {total_params:,} parameters (must be ≤ 25,000)"
-    assert accuracy_check, f"Model accuracy ({accuracy:.2f}%) is below required 95%"
-
 def test_model_requirements(trained_model):
-    """Test model size and verify it's trained"""
-    assert trained_model is not None, "Model was not properly loaded"
+    """Test model size and accuracy requirements"""
+    print("\n=== Testing Model Requirements ===")
+    
+    # Test parameter count
     num_params = sum(p.numel() for p in trained_model.parameters())
+    print(f"Total parameters: {num_params:,}")
     assert num_params <= 25000, f"Model has {num_params:,} parameters (must be ≤ 25,000)"
     
-    # Verify model is trained (weights aren't random)
-    sample_weight = next(trained_model.parameters())
-    assert not torch.allclose(sample_weight, torch.zeros_like(sample_weight)), "Model appears untrained"
+    # Test accuracy
+    device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
+    trained_model.eval()
+    test_dataset = MNIST('./data', train=False, transform=get_transforms())
+    test_loader = DataLoader(test_dataset, batch_size=64)
+    
+    correct = 0
+    total = 0
+    
+    with torch.no_grad():
+        for inputs, targets in test_loader:
+            inputs, targets = inputs.to(device), targets.to(device)
+            outputs = trained_model(inputs)
+            _, predicted = outputs.max(1)
+            total += targets.size(0)
+            correct += predicted.eq(targets).sum().item()
+    
+    accuracy = 100. * correct / total
+    print(f"Model accuracy: {accuracy:.2f}%")
+    assert accuracy >= 95, f"Model accuracy {accuracy:.2f}% is below required 95%"
+    
+    print("✅ Model meets all requirements:")
+    print(f"  • Parameters: {num_params:,} ≤ 25,000")
+    print(f"  • Accuracy: {accuracy:.2f}% ≥ 95%")
 
 def test_model_output_shape(trained_model):
     """Test if model outputs correct shape"""
