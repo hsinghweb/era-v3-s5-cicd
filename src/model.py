@@ -1,23 +1,21 @@
-import torch  # noqa: F401, E402  # needed for torch.nn functionality
+import torch
 import torch.nn as nn
+import torch.nn.functional as F
 
 class MNISTModel(nn.Module):
     def __init__(self):
-        super(MNISTModel, self).__init__()
-        self.conv1 = nn.Conv2d(1, 4, kernel_size=3, padding=1)
-        self.bn1 = nn.BatchNorm2d(4)
-        self.conv2 = nn.Conv2d(4, 8, kernel_size=3, padding=1)
-        self.bn2 = nn.BatchNorm2d(8)
-        self.fc1 = nn.Linear(8 * 7 * 7, 32)
+        super().__init__()
+        self.conv1 = nn.Conv2d(1, 8, kernel_size=3)
+        self.conv2 = nn.Conv2d(8, 16, kernel_size=3)
+        self.fc1 = nn.Linear(16 * 5 * 5, 32)
         self.fc2 = nn.Linear(32, 10)
-        self.pool = nn.MaxPool2d(2, 2)
-        self.relu = nn.ReLU()
-        self.dropout = nn.Dropout(0.2)
-
+        
     def forward(self, x):
-        x = self.pool(self.relu(self.bn1(self.conv1(x))))
-        x = self.pool(self.relu(self.bn2(self.conv2(x))))
-        x = x.view(-1, 8 * 7 * 7)
-        x = self.dropout(self.relu(self.fc1(x)))
+        x = F.relu(self.conv1(x))
+        x = F.max_pool2d(x, 2)
+        x = F.relu(self.conv2(x))
+        x = F.max_pool2d(x, 2)
+        x = x.view(-1, 16 * 5 * 5)
+        x = F.relu(self.fc1(x))
         x = self.fc2(x)
-        return x
+        return F.log_softmax(x, dim=1)
