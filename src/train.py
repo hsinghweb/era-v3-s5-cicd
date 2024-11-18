@@ -27,6 +27,12 @@ def show_augmented_samples(dataset, num_samples=5):
     plt.savefig('augmented_samples.png')
     plt.close()
 
+def get_transforms():
+    return transforms.Compose([
+        transforms.ToTensor(),
+        transforms.Normalize((0.1307,), (0.3081,))  # MNIST mean and std
+    ])
+
 def train_model():
     device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
     model = nn.Sequential(
@@ -61,7 +67,8 @@ def train_model():
         transforms.Normalize((0.1307,), (0.3081,))
     ])
 
-    train_dataset = MNIST('./data', train=True, download=True, transform=train_transform)
+    transform = get_transforms()
+    train_dataset = MNIST('./data', train=True, download=True, transform=transform)
     train_loader = DataLoader(train_dataset, batch_size=64, shuffle=True)
 
     # Single epoch training with detailed logging

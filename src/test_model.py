@@ -1,7 +1,9 @@
 import torch
 import pytest
-from train import train_model
+from train import train_model, get_transforms
 from torchvision import datasets, transforms
+import numpy as np
+from PIL import Image
 
 def verify_model_requirements(model, accuracy):
     # Count parameters
@@ -52,6 +54,49 @@ def test_model_requirements(capsys):
     
     final_accuracy = 100 * correct / total
     verify_model_requirements(model, final_accuracy)
+
+def test_model_output_shape():
+    """Test if model outputs correct shape (batch_size, 10) for MNIST"""
+    model = train_model()
+    batch_size = 64
+    dummy_input = torch.randn(batch_size, 1, 28, 28)  # MNIST image size
+    output = model(dummy_input)
+    assert output.shape == (batch_size, 10), f"Expected shape (64, 10), got {output.shape}"
+
+def test_transform_normalization():
+    """Test if transforms normalize images to expected range"""
+    transform = get_transforms()
+    # Create a dummy PIL image (gray)
+    dummy_image = Image.fromarray(np.uint8(np.ones((28, 28)) * 128))
+    transformed = transform(dummy_image)
+    
+    # For MNIST normalization (mean=0.1307, std=0.3081)
+    # A gray image (128/255 ≈ 0.5) should be transformed to approximately:
+    # (0.5 - 0.1307) / 0.3081 ≈ 1.2
+    assert -2 < transformed.mean() < 2, f"Transform normalization not in expected range: {transformed.mean()}"
+
+def test_model_training_mode():
+    """Test if dropout layers behave differently in train vs eval mode"""
+    model = train_model()
+    
+    # Same input in train mode
+    model.train()
+    input_tensor = torch.randn(1, 1, 28, 28)
+    
+    # Run multiple forward passes and collect outputs
+    outputs = []
+    for _ in range(5):
+        outputs.append(model(input_tensor).detach())
+    
+    # Check if at least one pair of outputs is different
+    all_same = all(torch.allclose(outputs[0], output) for output in outputs[1:])
+    assert not all_same, "Dropout doesn't seem to be working in training mode"
+    
+    # Test eval mode
+    model.eval()
+    eval_output1 = model(input_tensor)
+    eval_output2 = model(input_tensor)
+    assert torch.allclose(eval_output1, eval_output2), "Outputs should be identical in eval mode"
 
 if __name__ == "__main__":
     model = train_model()
