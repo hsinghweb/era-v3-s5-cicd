@@ -22,6 +22,7 @@ def train_model():
 
     # Training
     model.train()
+    running_loss = 0.0
     for batch_idx, (data, target) in enumerate(train_loader):
         data, target = data.to(device), target.to(device)
         optimizer.zero_grad()
@@ -29,5 +30,20 @@ def train_model():
         loss = criterion(output, target)
         loss.backward()
         optimizer.step()
+        
+        # Accumulate running loss
+        running_loss += loss.item()
+        
+        # Print progress every 100 batches
+        if batch_idx % 100 == 0:
+            avg_loss = running_loss / (batch_idx + 1)
+            print(f'Batch [{batch_idx:>4d}/{len(train_loader)}] '
+                  f'({100. * batch_idx / len(train_loader):>3.0f}%) | '
+                  f'Loss: {loss.item():.4f} | '
+                  f'Avg Loss: {avg_loss:.4f}')
+
+    # Print final epoch statistics
+    final_avg_loss = running_loss / len(train_loader)
+    print(f'\nTraining completed. Final average loss: {final_avg_loss:.4f}')
 
     return model 
