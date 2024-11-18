@@ -66,7 +66,7 @@ python src/train.py
 
 1. To evaluate a trained model:
 ```bash
-pytest src/test_model.py -v -s
+pytest src/test_model.py -v
 ```
 
 ## Contact
