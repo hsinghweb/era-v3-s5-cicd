@@ -54,4 +54,29 @@ def test_model_requirements(capsys):
     print(captured.out)
 
 if __name__ == "__main__":
-    pytest.main([__file__])
+    model = train_model()
+    
+    # Calculate training accuracy
+    device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
+    model.eval()
+    train_correct = 0
+    train_total = 0
+    
+    transform = transforms.Compose([
+        transforms.ToTensor(),
+        transforms.Normalize((0.1307,), (0.3081,))
+    ])
+    
+    train_dataset = datasets.MNIST('./data', train=True, download=True, transform=transform)
+    train_loader = torch.utils.data.DataLoader(train_dataset, batch_size=1000)
+    
+    with torch.no_grad():
+        for data, target in train_loader:
+            data, target = data.to(device), target.to(device)
+            outputs = model(data)
+            _, predicted = torch.max(outputs.data, 1)
+            train_total += target.size(0)
+            train_correct += (predicted == target).sum().item()
+    
+    final_accuracy = 100 * train_correct / train_total
+    verify_model_requirements(model, final_accuracy)
