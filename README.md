@@ -1,3 +1,7 @@
+# MNIST Classification
+
+![Build Status](https://github.com/hsinghweb/era-v3-s5-cicd/actions/workflows/python-app.yml/badge.svg)
+
 # PyTorch Model Project
 
 A PyTorch-based machine learning project implementing.
