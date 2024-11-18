@@ -22,9 +22,10 @@ def verify_model_requirements(model, accuracy):
 
 @pytest.mark.filterwarnings("ignore")
 def test_model_requirements(capsys):
-    model = train_model()
+    # Capture training output
+    model = train_model()  # This will print loss during training
     
-    # Calculate training accuracy
+    # Calculate and verify accuracy
     device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
     model.eval()
     train_correct = 0
@@ -49,9 +50,11 @@ def test_model_requirements(capsys):
     final_accuracy = 100 * train_correct / train_total
     verify_model_requirements(model, final_accuracy)
     
-    # Force output to display
+    # Display all captured output
     captured = capsys.readouterr()
-    print(captured.out)
+    print("\nTraining and Verification Results:")
+    print("----------------------------------")
+    print(captured.out)  # This will show both training loss and requirements check
 
 if __name__ == "__main__":
     model = train_model()

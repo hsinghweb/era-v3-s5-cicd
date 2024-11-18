@@ -25,7 +25,7 @@ jobs:
     
     - name: Run tests
       run: |
-        pytest src/test_model.py -v
+        pytest src/test_model.py -v -s
     
     - name: Archive model artifacts
       uses: actions/upload-artifact@v4
