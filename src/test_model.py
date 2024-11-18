@@ -22,14 +22,15 @@ def verify_model_requirements(model, accuracy):
 
 @pytest.mark.filterwarnings("ignore")
 def test_model_requirements(capsys):
-    # Capture training output
-    model = train_model()  # This will print loss during training
+    print("\n=== Starting Model Training and Testing ===")
+    print("Training model...")
+    model = train_model()
     
-    # Calculate and verify accuracy
+    print("\nCalculating final accuracy...")
     device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
     model.eval()
-    train_correct = 0
-    train_total = 0
+    correct = 0
+    total = 0
     
     transform = transforms.Compose([
         transforms.ToTensor(),
@@ -40,21 +41,17 @@ def test_model_requirements(capsys):
     train_loader = torch.utils.data.DataLoader(train_dataset, batch_size=1000)
     
     with torch.no_grad():
-        for data, target in train_loader:
+        for batch_idx, (data, target) in enumerate(train_loader):
             data, target = data.to(device), target.to(device)
             outputs = model(data)
             _, predicted = torch.max(outputs.data, 1)
-            train_total += target.size(0)
-            train_correct += (predicted == target).sum().item()
+            total += target.size(0)
+            correct += (predicted == target).sum().item()
+            if batch_idx % 10 == 0:
+                print(f"Progress: {batch_idx * 1000}/{len(train_dataset)} images processed")
     
-    final_accuracy = 100 * train_correct / train_total
+    final_accuracy = 100 * correct / total
     verify_model_requirements(model, final_accuracy)
-    
-    # Display all captured output
-    captured = capsys.readouterr()
-    print("\nTraining and Verification Results:")
-    print("----------------------------------")
-    print(captured.out)  # This will show both training loss and requirements check
 
 if __name__ == "__main__":
     model = train_model()

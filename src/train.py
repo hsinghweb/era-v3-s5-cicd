@@ -3,26 +3,73 @@ import torch.optim as optim
 import torch.nn as nn
 from torchvision import datasets, transforms
 from model import MNISTModel
+import matplotlib.pyplot as plt
+from torchvision.datasets import MNIST
+from torch.utils.data import DataLoader
+
+# Define augmentation transforms
+train_transform = transforms.Compose([
+    transforms.RandomRotation(15),
+    transforms.RandomAffine(0, translate=(0.1, 0.1), scale=(0.9, 1.1)),
+    transforms.ToTensor(),
+    transforms.Normalize((0.1307,), (0.3081,))
+])
+
+def show_augmented_samples(dataset, num_samples=5):
+    plt.figure(figsize=(12, 3))
+    for i in range(num_samples):
+        # Get the same image multiple times to show different augmentations
+        img, label = dataset[0]
+        plt.subplot(1, num_samples, i + 1)
+        plt.imshow(img.squeeze(), cmap='gray')
+        plt.title(f'Label: {label}')
+        plt.axis('off')
+    plt.savefig('augmented_samples.png')
+    plt.close()
 
 def train_model():
     device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
-    model = MNISTModel().to(device)
-    optimizer = optim.Adam(model.parameters(), lr=0.003)
-    criterion = nn.CrossEntropyLoss()
+    model = nn.Sequential(
+        nn.Conv2d(1, 4, 3, padding=1),     # Reduced to 4 filters
+        nn.ReLU(),
+        nn.MaxPool2d(2),
+        
+        nn.Conv2d(4, 8, 3, padding=1),     # Reduced to 8 filters
+        nn.ReLU(),
+        nn.MaxPool2d(2),
+        nn.Dropout(0.25),
+        
+        nn.Flatten(),
+        nn.Linear(8 * 7 * 7, 32),          # Reduced input channels to 8
+        nn.ReLU(),
+        nn.Dropout(0.3),
+        nn.Linear(32, 10)
+    )
 
-    # Data loading
-    transform = transforms.Compose([
+    # Print parameter count
+    total_params = sum(p.numel() for p in model.parameters())
+    print(f'\nTotal parameters: {total_params:,}')
+
+    optimizer = optim.Adam(model.parameters(), lr=0.002)  # Slightly higher learning rate
+    criterion = nn.CrossEntropyLoss()
+    
+    # Simplified augmentation
+    train_transform = transforms.Compose([
+        transforms.RandomRotation(10),
+        transforms.RandomAffine(0, translate=(0.1, 0.1)),
         transforms.ToTensor(),
         transforms.Normalize((0.1307,), (0.3081,))
     ])
-    
-    train_loader = torch.utils.data.DataLoader(
-        datasets.MNIST('./data', train=True, download=True, transform=transform),
-        batch_size=128, shuffle=True)
 
-    # Training
+    train_dataset = MNIST('./data', train=True, download=True, transform=train_transform)
+    train_loader = DataLoader(train_dataset, batch_size=64, shuffle=True)
+
+    # Single epoch training with detailed logging
     model.train()
     running_loss = 0.0
+    correct = 0
+    total = 0
+    
     for batch_idx, (data, target) in enumerate(train_loader):
         data, target = data.to(device), target.to(device)
         optimizer.zero_grad()
@@ -31,19 +78,21 @@ def train_model():
         loss.backward()
         optimizer.step()
         
-        # Accumulate running loss
+        # Calculate accuracy
+        _, predicted = torch.max(output.data, 1)
+        total += target.size(0)
+        correct += (predicted == target).sum().item()
         running_loss += loss.item()
         
-        # Print progress every 100 batches
         if batch_idx % 100 == 0:
             avg_loss = running_loss / (batch_idx + 1)
+            current_acc = 100 * correct / total
             print(f'Batch [{batch_idx:>4d}/{len(train_loader)}] '
                   f'({100. * batch_idx / len(train_loader):>3.0f}%) | '
                   f'Loss: {loss.item():.4f} | '
-                  f'Avg Loss: {avg_loss:.4f}')
+                  f'Avg Loss: {avg_loss:.4f} | '
+                  f'Acc: {current_acc:.2f}%')
 
-    # Print final epoch statistics
-    final_avg_loss = running_loss / len(train_loader)
-    print(f'\nTraining completed. Final average loss: {final_avg_loss:.4f}')
-
+    final_acc = 100 * correct / total
+    print(f'\nTraining completed. Final accuracy: {final_acc:.2f}%')
     return model 
