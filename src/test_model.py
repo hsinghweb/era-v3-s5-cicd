@@ -4,6 +4,7 @@ from train import train_model, get_transforms
 from torchvision import datasets, transforms
 import numpy as np
 from PIL import Image
+from pytest import ExitCode
 
 def verify_model_requirements(model, accuracy):
     # Count parameters
@@ -99,29 +100,18 @@ def test_model_training_mode():
     assert torch.allclose(eval_output1, eval_output2), "Outputs should be identical in eval mode"
 
 if __name__ == "__main__":
-    model = train_model()
+    # Run tests and store results
+    results = pytest.main([__file__, "-v"])
     
-    # Calculate training accuracy
-    device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
-    model.eval()
-    train_correct = 0
-    train_total = 0
+    # Print custom summary
+    print("\n=== Test Execution Summary ===")
+    test_functions = [
+        'test_model_requirements',
+        'test_model_output_shape',
+        'test_transform_normalization',
+        'test_model_training_mode'
+    ]
     
-    transform = transforms.Compose([
-        transforms.ToTensor(),
-        transforms.Normalize((0.1307,), (0.3081,))
-    ])
-    
-    train_dataset = datasets.MNIST('./data', train=True, download=True, transform=transform)
-    train_loader = torch.utils.data.DataLoader(train_dataset, batch_size=1000)
-    
-    with torch.no_grad():
-        for data, target in train_loader:
-            data, target = data.to(device), target.to(device)
-            outputs = model(data)
-            _, predicted = torch.max(outputs.data, 1)
-            train_total += target.size(0)
-            train_correct += (predicted == target).sum().item()
-    
-    final_accuracy = 100 * train_correct / train_total
-    verify_model_requirements(model, final_accuracy)
+    for test in test_functions:
+        result = "PASSED" if results == 0 else "FAILED"
+        print(f"{test}: {result}")

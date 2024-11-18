@@ -103,3 +103,16 @@ def train_model():
     final_acc = 100 * correct / total
     print(f'\nTraining completed. Final accuracy: {final_acc:.2f}%')
     return model 
+
+if __name__ == "__main__":
+    # Train the model
+    model = train_model()
+    
+    # Create dataset
+    transform = get_transforms()
+    train_dataset = MNIST('./data', train=True, download=True, transform=transform)
+    
+    # Show samples (only when running locally, not in CI)
+    import os
+    if not os.environ.get('CI'):  # Skip visualization in CI environment
+        show_augmented_samples(train_dataset)
