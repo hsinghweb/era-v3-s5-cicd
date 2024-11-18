@@ -1,6 +1,6 @@
 # MNIST Classification
 
-![Build Status](https://github.com/hsinghweb/era-v3-s5-cicd/actions/workflows/python-app.yml/badge.svg)
+![Build Status](https://github.com/hsinghweb/era-v3-s5-cicd/actions/workflows/ml-pipeline.yml/badge.svg)
 
 # PyTorch Model Project
 
